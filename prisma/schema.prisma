@@ -1,0 +1,228 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("usuario_id_publico") @db.VarChar(255)
+
+  name     String @map("usuario_nome") @db.VarChar(255)
+  email    String @unique @map("usuario_email") @db.VarChar(255)
+  password String @map("usuario_senha") @db.VarChar(255)
+  phone    String @map("usuario_telefone") @db.VarChar(255)
+  address  String @map("usuario_endereco") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("usuario_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("usuario_data_atualizado") @db.Timestamp(6)
+
+  users_admins  users_admins?
+  users_staffs  users_staffs?
+  users_clients users_clients?
+
+  @@map("usuarios")
+}
+
+model users_admins {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("usuario_admin_id_publico") @db.VarChar(255)
+
+  userPublicId String @unique @map("usuario_admin_usuario_id_publico") @db.VarChar(255)
+  user         users  @relation(fields: [userPublicId], references: [publicId])
+
+  events events[]
+
+  createdAt DateTime @default(now()) @map("usuario_admin_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("usuario_admin_data_atualizado") @db.Timestamp(6)
+
+  @@map("usuarios_administradores")
+}
+
+model users_staffs {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("usuario_funcionario_id_publico") @db.VarChar(255)
+
+  userPublicId String @unique @map("usuario_funcionario_usuario_id_publico") @db.VarChar(255)
+  user         users  @relation(fields: [userPublicId], references: [publicId])
+
+  events events[]
+
+  createdAt DateTime @default(now()) @map("usuario_funcionario_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("usuario_funcionario_data_atualizado") @db.Timestamp(6)
+
+  @@map("usuarios_funcionarios")
+}
+
+model users_clients {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("usuario_cliente_id_publico") @db.VarChar(255)
+
+  userPublicId String @unique @map("usuario_cliente_usuario_id_publico") @db.VarChar(255)
+  user         users  @relation(fields: [userPublicId], references: [publicId])
+
+  carts carts[]
+
+  checkouts checkouts[]
+
+  users_tickets users_tickets[]
+
+  createdAt DateTime @default(now()) @map("usuario_cliente_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("usuario_cliente_data_atualizado") @db.Timestamp(6)
+
+  @@map("usuarios_clientes")
+}
+
+model events {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("evento_id_publico") @db.VarChar(255)
+
+  name        String   @map("evento_nome") @db.VarChar(255)
+  description String   @map("evento_descricao") @db.VarChar(255)
+  imageUrl    String   @map("evento_imagem_url") @db.VarChar(255)
+  address     String   @map("evento_endereco") @db.VarChar(255)
+  startDate   DateTime @map("evento_data_inicio") @db.Timestamp(6)
+  endDate     DateTime @map("evento_data_fim") @db.Timestamp(6)
+
+  status EVENT_STATUS @default(OPEN) @map("evento_status")
+
+  carts carts[]
+
+  userAdminPublicId String       @map("evento_usuario_admin_id_publico") @db.VarChar(255)
+  userAdmin         users_admins @relation(fields: [userAdminPublicId], references: [publicId])
+
+  userStaffs users_staffs[]
+
+  tickets tickets[]
+
+  users_tickets users_tickets[]
+
+  createdAt DateTime @default(now()) @map("evento_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("evento_data_atualizado") @db.Timestamp(6)
+
+  @@map("eventos")
+}
+
+model tickets {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("ingresso_id_publico") @db.VarChar(255)
+
+  name     String @map("ingresso_nome") @db.VarChar(255)
+  price    Float  @map("ingresso_preco") @db.Real
+  quantity Int    @map("ingresso_quantidade") @db.Integer
+
+  event events[]
+
+  status TICKET_STATUS @default(AVAILABLE) @map("ingresso_status")
+
+  carts         carts[]
+  checkouts     checkouts[]
+  users_tickets users_tickets[]
+
+  createdAt DateTime @default(now()) @map("ingresso_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("ingresso_data_atualizado") @db.Timestamp(6)
+
+  @@map("ingressos")
+}
+
+model carts {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("carrinho_id_publico") @db.VarChar(255)
+
+  status CART_STATUS @default(OPEN) @map("carrinho_status")
+
+  userClientPublicId String         @map("carrinho_usuario_id_publico") @db.VarChar(255)
+  userClient         users_clients @relation(fields: [userClientPublicId], references: [publicId])
+
+  events events[]
+
+  tickets tickets[]
+
+  checkout checkouts?
+
+  createdAt DateTime @default(now()) @map("carrinho_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("carrinho_data_atualizado") @db.Timestamp(6)
+
+  @@map("carrinhos")
+}
+
+model checkouts {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("checkout_id_publico") @db.VarChar(255)
+
+  userClientPublicId String        @map("checkout_usuario_id_publico") @db.VarChar(255)
+  userClient         users_clients @relation(fields: [userClientPublicId], references: [publicId])
+
+  status CHECKOUT_STATUS @default(PENDING) @map("checkout_status")
+
+  cartPublicId String @unique @map("checkout_carrinho_id_publico") @db.VarChar(255)
+  cart         carts  @relation(fields: [cartPublicId], references: [publicId])
+
+  tickets       tickets[]
+  users_tickets users_tickets[]
+
+  createdAt DateTime @default(now()) @map("checkout_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("checkout_data_atualizado") @db.Timestamp(6)
+
+  @@map("checkouts")
+}
+
+model users_tickets {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique @default(cuid()) @map("usuario_ingresso_id_publico") @db.VarChar(255)
+  qrCode   String @map("usuario_ingresso_qr_code") @db.VarChar(255)
+
+  userClientPublicId String        @map("usuario_ingresso_usuario_id_publico") @db.VarChar(255)
+  userClint          users_clients @relation(fields: [userClientPublicId], references: [publicId])
+
+  ticketPublicId String  @map("usuario_ingresso_ingresso_id_publico") @db.VarChar(255)
+  ticket         tickets @relation(fields: [ticketPublicId], references: [publicId])
+
+  eventPublicId String @map("usuario_ingresso_evento_id_publico") @db.VarChar(255)
+  event         events @relation(fields: [eventPublicId], references: [publicId])
+
+  checkoutPublicId String    @map("usuario_ingresso_checkout_id_publico") @db.VarChar(255)
+  checkout         checkouts @relation(fields: [checkoutPublicId], references: [publicId])
+
+  status USER_TICKET_STATUS @default(ACTIVE) @map("usuario_ingresso_status")
+
+  createdAt DateTime @default(now()) @map("usuario_ingresso_data_criado") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("usuario_ingresso_data_atualizado") @db.Timestamp(6)
+
+  @@map("usuarios_ingressos")
+}
+
+enum USER_TICKET_STATUS {
+  ACTIVE
+  INACTIVE
+}
+
+enum TICKET_STATUS {
+  AVAILABLE
+  SOLD_OUT
+}
+
+enum EVENT_STATUS {
+  OPEN
+  CLOSED
+}
+
+enum CART_STATUS {
+  OPEN
+  CLOSED
+}
+
+enum CHECKOUT_STATUS {
+  PENDING
+  PAID
+  CANCELED
+}

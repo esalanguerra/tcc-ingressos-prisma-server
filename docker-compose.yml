@@ -1,0 +1,104 @@
+networks:
+  ingressos:
+    driver: bridge
+
+volumes:
+  database-data:
+    driver: local
+
+  prisma-migrations-data:
+    driver: local
+
+  prisma-server-data:
+    driver: local
+
+  prisma-seed-data:
+    driver: local
+
+  pgadmin-data:
+    driver: local
+
+services:
+  database:
+    image: postgres:14
+    container_name: database
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./database/GenerateDatabase.sql:/docker-entrypoint-initdb.d/GenerateDatabase.sql
+      - database-data:/var/lib/postgresql/data
+    networks:
+      - ingressos
+
+  prisma-server:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: prisma-server
+    restart: always
+    ports:
+      - 5555:5555
+    environment:
+      DATABASE_URL: 'postgresql://rodrigo:ingressosPontoComPontoBr@database:5432/ingressos?schema=public'
+      CORS_ORIGIN: 'http://backend:8081,http://frontend:3000'
+    networks:
+      - ingressos
+    depends_on:
+      - database
+      - prisma-migrations
+    volumes:
+      - prisma-server-data:/app/prisma
+
+  prisma-migrations:
+    build:
+      context: ./
+      dockerfile: migration.dockerfile
+    container_name: prisma-migrations
+    restart: no
+    command: npx prisma db push
+    environment:
+      DATABASE_URL: 'postgresql://rodrigo:ingressosPontoComPontoBr@database:5432/ingressos?schema=public'
+    networks:
+      - ingressos
+    depends_on:
+      - database
+    volumes:
+      - prisma-migrations-data:/app/prisma/migrations
+
+  prisma-seed:
+    build:
+      context: ./
+      dockerfile: seed.dockerfile
+    container_name: prisma-seed
+    restart: no
+    command: node seed.js
+    environment:
+      DATABASE_URL: 'postgresql://rodrigo:ingressosPontoComPontoBr@database:5432/ingressos?schema=public'
+    networks:
+      - ingressos
+    depends_on:
+      - database
+      - prisma-migrations
+    volumes:
+      - prisma-seed-data:/app/prisma/seeds
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    ports:
+      - 5050:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 'rodrigo@ingressos.com.br'
+      PGADMIN_DEFAULT_PASSWORD: 'admin'
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - ingressos
+    depends_on:
+      - database
